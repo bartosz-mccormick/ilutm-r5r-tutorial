@@ -59,6 +59,12 @@ library(tidytransit)
 
 options(java.parameters = '-Xmx4G') # we need to allocate RAM for r5r to work. You can increase this depending on your system resources.
 library(r5r)
+
+```
+
+For the code to run correctly, you need to set the "working directory". This should be the repository (folder) you downloaded / cloned from github.
+```{r}
+setwd("C:\\you_need_to_update_this_path\\ilutm-r5r-tutorial\\")
 ```
 
 
