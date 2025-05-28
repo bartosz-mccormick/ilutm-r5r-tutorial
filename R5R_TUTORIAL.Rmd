@@ -6,7 +6,7 @@ output:
     toc_float: true
 ---
 
-```{r setup, include=FALSE} 
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 ```
 
@@ -14,44 +14,32 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(ggplot2)
 ```
 
-
 # Introduction
 
-
-In this tutorial you will be introduced to [r5r](https://ipeagit.github.io/r5r/): an interface to the [R5](https://github.com/conveyal/r5) routing engine developed by Conveyal.
-R5 allows you to do "rapid, realistic" routing on multimodal networks. It's very flexible, enabling
-intermodal analyses and has the key strength of retaining the full detail of the public transport timetable.
-If you're more familiar with python, you can consider using [r5py](https://github.com/r5py/r5py) instead - although it may not have all of the same functionality.
+In this tutorial you will be introduced to [r5r](https://ipeagit.github.io/r5r/): an interface to the [R5](https://github.com/conveyal/r5) routing engine developed by Conveyal. R5 allows you to do "rapid, realistic" routing on multimodal networks. It's very flexible, enabling intermodal analyses and has the key strength of retaining the full detail of the public transport timetable. If you're more familiar with python, you can consider using [r5py](https://github.com/r5py/r5py) instead - although it may not have all of the same functionality.
 
 The tutorial consists of the following main steps:
 
-1. Installing `r5r`
-2. GTFS preparation
-3. Building a `r5r` model
-3. Preparing origin-destination data
-4. Calculating and exporting a TTM
+1.  Installing `r5r`
+2.  GTFS preparation
+3.  Building a `r5r` model
+4.  Preparing origin-destination data
+5.  Calculating and exporting a TTM
 
-
-In addition to r5r, you will be exposed to several other useful R packages: [dplyr](https://dplyr.tidyverse.org/) (for working with data tables), [sf](https://r-spatial.github.io/sf/) (for working with geodata), and [tidytransit](https://github.com/r-transit/tidytransit) (for working with GTFS data). These are all very
-powerful packages that can make your life a lot easier if you learn how to use them! You're encouraged 
-to look into the documentation of these packages for more information.
+In addition to r5r, you will be exposed to several other useful R packages: [dplyr](https://dplyr.tidyverse.org/) (for working with data tables), [sf](https://r-spatial.github.io/sf/) (for working with geodata), and [tidytransit](https://github.com/r-transit/tidytransit) (for working with GTFS data). These are all very powerful packages that can make your life a lot easier if you learn how to use them! You're encouraged to look into the documentation of these packages for more information.
 
 **Tip: you can modify this file and use it as a template to help you complete your project ;)**
 
-
 # Installing `r5r`
 
-All the packages listed below (including `r5r`) can be installed by clicking "packages > install"
-on the sidebar and searching for the package name or by executing the following command: `install.packages("package_name_here")`
+All the packages listed below (including `r5r`) can be installed by clicking "packages \> install" on the sidebar and searching for the package name or by executing the following command: `install.packages("package_name_here")`
 
-![](./img/install_packages.png){width=300px}
+![](./img/install_packages.png){width="300px"}
 
-
-Since R5 (the routing engine itself) is written in java, we need to install the Java Development Kit (JDK)
-to get it to work. Specifically we need version **21**. You can install it here: https://www.oracle.com/de/java/technologies/downloads/#java21
-
+Since R5 (the routing engine itself) is written in java, we need to install the Java Development Kit (JDK) to get it to work. Specifically we need version **21**. You can install it here: <https://www.oracle.com/de/java/technologies/downloads/#java21>
 
 Once that's done, we can load all the packages we'll be using today.
+
 ```{r}
 library(tidyverse)
 library(sf)
@@ -63,18 +51,17 @@ library(r5r)
 ```
 
 For the code to run correctly, you need to set the "working directory". This should be the repository (folder) you downloaded / cloned from github.
-```{r}
-setwd("C:\\you_need_to_update_this_path\\ilutm-r5r-tutorial\\")
-```
 
+```{r}
+setwd("C:/you_need_to_update_this_path/ilutm-r5r-tutorial/")
+```
 
 # GTFS preparation
 
-- Download data from: https://gtfs.de/ - pick "Deutschland gesamt"
-- Move the zip file into the `/raw_data/` folder
-- Using the full feed for all of Germany will require a lot of resources. Since we'll be 
-analyzing a single city - lets filter the feed so that it is smaller. We'll be using `tidytransit` for this.
-- Let's first load in geodata representing the area we'll be trimming to (in this case - Munich). We'll use `st_read()` from the `sf` package for this. It can handle all typical geospatial file types (`.shp`,`.gpkg`,etc.)
+-   Download data from: <https://gtfs.de/> - pick "Deutschland gesamt"
+-   Move the zip file into the `/raw_data/` folder
+-   Using the full feed for all of Germany will require a lot of resources. Since we'll be analyzing a single city - lets filter the feed so that it is smaller. We'll be using `tidytransit` for this.
+-   Let's first load in geodata representing the area we'll be trimming to (in this case - Munich). We'll use `st_read()` from the `sf` package for this. It can handle all typical geospatial file types (`.shp`,`.gpkg`,etc.)
 
 ```{r}
 area <- st_read("./raw_data/munich_admin.gpkg")
@@ -83,8 +70,9 @@ ggplot()+
   geom_sf(data  = area)
 
 ```
-- It's good practice to buffer our study area to avoid any edge effects. Let's buffer our area by 5 km. NOTE: in this tutorial we're just going to be looking at accessibility within Munich. If your destinations extend beyond the border of your study area, you may need to buffer your study area significantly! (>>5 km)
-- We've seen how to do this in QGIS, let's use `sf` this time
+
+-   It's good practice to buffer our study area to avoid any edge effects. Let's buffer our area by 5 km. NOTE: in this tutorial we're just going to be looking at accessibility within Munich. If your destinations extend beyond the border of your study area, you may need to buffer your study area significantly! (\>\>5 km)
+-   We've seen how to do this in QGIS, let's use `sf` this time
 
 ```{r}
 area_buffered <- st_transform(area,crs = 25832) # switch crs to projected (ETRS89 / UTM zone 32N)
@@ -100,7 +88,9 @@ ggplot()+
   geom_sf(data = area_buffered)+
   geom_sf(data = area)
 ```
-- Let's load in the GTFS feed we downloaded and trim it. 
+
+-   Let's load in the GTFS feed we downloaded and trim it.
+
 ```{r}
 
 gtfs_raw <- read_gtfs("./raw_data/latest.zip",encoding = "UTF-8") # path should point to the GTFS feed you downloaded
@@ -109,51 +99,48 @@ gtfs_filtered <- filter_feed_by_area(gtfs_raw,st_bbox(area_buffered))
 
 ```
 
-- We can see that the number of stops in the feed has been significantly reduced.
+-   We can see that the number of stops in the feed has been significantly reduced.
+
 ```{r echo=FALSE}
 
 tribble(~n_stops_raw, ~n_stops_filtered,
         nrow(gtfs_raw$stops), nrow(gtfs_filtered$stops))
 ```
 
+-   Let's save the filtered feed. R5 will use this to build a network, you can also use it for other public transport analyses (refer to previous tutorials). Tip: `tidytransit` has a lot of great functionality for this!
 
-- Let's save the filtered feed. R5 will use this to build a network, you can also use it for other public transport analyses (refer to previous tutorials). Tip: `tidytransit` has a lot of great functionality for this!
 ```{r}
 
 write_gtfs(gtfs_filtered,"./r5r_model/gtfs.zip")
 
 ```
 
-
-
 # Building a `r5r` model
 
-- Before running any more code we need to supply R5 the data it needs to build the network. 
-- So far we have prepared the GTFS data, but we also need a street network. 
-- R5 uses an extract of OSM data to build the street network. To do this, it needs to be provided with a `.pbf` file. This can be found on [Geofabrik](http://download.geofabrik.de/) or https://slice.openstreetmap.us/. 
-- OSM by the slice is recommended because it has a cool name and because you can select the exact area you're interested in (reducing network size, improving performance)
-- Just as when we were trimming the GTFS feed, extract an area larger than the study area
+-   Before running any more code we need to supply R5 the data it needs to build the network.
+-   So far we have prepared the GTFS data, but we also need a street network.
+-   R5 uses an extract of OSM data to build the street network. To do this, it needs to be provided with a `.pbf` file. This can be found on [Geofabrik](http://download.geofabrik.de/) or <https://slice.openstreetmap.us/>.
+-   OSM by the slice is recommended because it has a cool name and because you can select the exact area you're interested in (reducing network size, improving performance)
+-   Just as when we were trimming the GTFS feed, extract an area larger than the study area
 
 ![](./img/slice.png)
 
-- Save the `.pbf` file to the `/r5r_model/` folder. The folder should look like this:
-![](./img/r5r_folder.png)
+-   Save the `.pbf` file to the `/r5r_model/` folder. The folder should look like this: ![](./img/r5r_folder.png)
 
-- We can now tell r5 to build the network. 
-- Tip: if you are sure you aren't modifying the GTFS or `.pbf` data any further, you can turn `overwrite = F` to avoid rebuilding the model (faster)
+-   We can now tell r5 to build the network.
+
+-   Tip: if you are sure you aren't modifying the GTFS or `.pbf` data any further, you can turn `overwrite = F` to avoid rebuilding the model (faster)
 
 ```{r}
 r5r_core <- setup_r5(data_path = "./r5r_model", verbose = FALSE,overwrite = T)
 ```
 
-
-
 # Preparing origin-destination data
 
-- In this tutorial we'll use public transport stops as our origins and destinations. 
-- As we've seen in a previous tutorial, we can get this information directly from the GTFS feed. Let's do it in R instead of QGIS this time
-- As we discussed in lecture, a single "stop" may be represented by multiple in a GTFS feed (e.g., a bus stop on both sides of the street). 
-- We can take some steps to simplify this. We will group all stops that share the same value for `parent_station` and then keep a single coordinate by taking the average. Be aware that solving this in a line of code is often too good to be true. GTFS data often contains mistakes, and may require more careful cleaning!
+-   In this tutorial we'll use public transport stops as our origins and destinations.
+-   As we've seen in a previous tutorial, we can get this information directly from the GTFS feed. Let's do it in R instead of QGIS this time
+-   As we discussed in lecture, a single "stop" may be represented by multiple in a GTFS feed (e.g., a bus stop on both sides of the street).
+-   We can take some steps to simplify this. We will group all stops that share the same value for `parent_station` and then keep a single coordinate by taking the average. Be aware that solving this in a line of code is often too good to be true. GTFS data often contains mistakes, and may require more careful cleaning!
 
 ```{r}
 stops <- summarize(group_by(gtfs_filtered$stops, parent_station),
@@ -163,7 +150,7 @@ stops <- summarize(group_by(gtfs_filtered$stops, parent_station),
 stops
 ```
 
-- let's convert the table to geodata and filter it down to our study area.
+-   let's convert the table to geodata and filter it down to our study area.
 
 ```{r}
 stops <- st_as_sf(stops,coords = c("stop_lon","stop_lat"),crs = 4326,remove = F)
@@ -179,9 +166,7 @@ ggplot()+
   geom_sf(data = stops, color = "blue")
 ```
 
-
-- Finally, let's format our data. The origins and destinations should have an `id` column.  Let's add a new column called `id`, and set the values to equal `parent_station`.
-
+-   Finally, let's format our data. The origins and destinations should have an `id` column. Let's add a new column called `id`, and set the values to equal `parent_station`.
 
 ```{r}
 stops <- mutate(stops, id = parent_station)
@@ -189,27 +174,24 @@ stops <- mutate(stops, id = parent_station)
 stops
 ```
 
-
 # Calculating and exporting a TTM
 
-The main functionality of `r5r` is the ability to calculate a travel time matrix. Knowing the travel time between pairs of points is useful on its own. It can also be used if you want more control over your accessibility calculations. For example, if you calculate a travel time matrix between pairs of public transport stops, you can calculate the access (origin --> first public transport stop) and egress (last public transport stop --> destination) legs of the trip independently. In other words, combining the output of r5r with the QGIS-based accessibility calculations we did in earlier tutorials.
+The main functionality of `r5r` is the ability to calculate a travel time matrix. Knowing the travel time between pairs of points is useful on its own. It can also be used if you want more control over your accessibility calculations. For example, if you calculate a travel time matrix between pairs of public transport stops, you can calculate the access (origin --\> first public transport stop) and egress (last public transport stop --\> destination) legs of the trip independently. In other words, combining the output of r5r with the QGIS-based accessibility calculations we did in earlier tutorials.
 
 Let's give it a shot:
 
 tip: there are many other settings you can change, you're encouraged to read the documentation of `r5r` to see what is possible! The [documentation](https://ipeagit.github.io/r5r/) has many nice examples!
 
-- `stops`: our origins are the public transport stops
-- `destinations`: our destinations are the public transport stops
-- `mode`: the primary mode is public transport (which includes walking for access and transfers)
-- `mode_egress`: the egress mode is walking
-- `departure_datetime`: start time
-- `time_window`: A travel time matrix will be calculated for each minute, for `time_window` minutes after the departure time. This allows for us to account for the variability in travel times. Imagine we ran our analysis only at 8:00 and we just missed a departure of an S-Bahn at 7:59, the travel time that we'd calculate would be severely penalized by an excessive wait time. Calculating travel times over a period of time lets us mitigate this. This parameter can be reduced (default is 10) as it can be computationally expensive. It's increasingly important in suburban and rural areas where service frequencies are low.
-- `percentiles`: this corresponds to the `time_window`. a value of 50 will report the median travel time. We can specify multiple percentiles by using a vector `c()`
-- `max_walk_time`: max time for access, egress, and transfers by walking
-- `walk_speed`: (kph)
-- `max_ride`: maximum # of transfers
-
-
+-   `stops`: our origins are the public transport stops
+-   `destinations`: our destinations are the public transport stops
+-   `mode`: the primary mode is public transport (which includes walking for access and transfers)
+-   `mode_egress`: the egress mode is walking
+-   `departure_datetime`: start time
+-   `time_window`: A travel time matrix will be calculated for each minute, for `time_window` minutes after the departure time. This allows for us to account for the variability in travel times. Imagine we ran our analysis only at 8:00 and we just missed a departure of an S-Bahn at 7:59, the travel time that we'd calculate would be severely penalized by an excessive wait time. Calculating travel times over a period of time lets us mitigate this. This parameter can be reduced (default is 10) as it can be computationally expensive. It's increasingly important in suburban and rural areas where service frequencies are low.
+-   `percentiles`: this corresponds to the `time_window`. a value of 50 will report the median travel time. We can specify multiple percentiles by using a vector `c()`
+-   `max_walk_time`: max time for access, egress, and transfers by walking
+-   `walk_speed`: (kph)
+-   `max_ride`: maximum \# of transfers
 
 ```{r}
 
@@ -221,7 +203,7 @@ travel_time_matrix(
   mode = c("TRANSIT"),  
   mode_egress = "WALK", 
   departure_datetime = as.POSIXct("26-05-2025 9:00:00", format = "%d-%m-%Y %H:%M:%S"), #its important that the date and time is within your GTFS feed
-  time_window = 10L, # 
+  time_window = 60L, # 
   percentiles = c(10,50),
   max_walk_time = 10,
   max_trip_duration = 30L,
@@ -234,10 +216,10 @@ TTM
 
 The impact of the `time_window` parameter can be quite significant on an analysis! In this example we calculated:
 
-- the 10th percentile travel time (meaning 10% of trips are at least this fast) 
-- the 50th percentile travel time (meaning 50% of trips are at least this fast)
+-   the 10th percentile travel time (meaning 10% of trips are at least this fast)
+-   the 50th percentile travel time (meaning 50% of trips are at least this fast)
 
-The proportion of OD pairs that had a 50th percentile travel time > 30 min and a 10th percentile travel time <= 30 min:
+The proportion of OD pairs that had a 50th percentile travel time \> 30 min and a 10th percentile travel time \<= 30 min:
 
 ```{r}
 TTM <- mutate(TTM,tt_diff = travel_time_p50 - travel_time_p10)
@@ -245,15 +227,15 @@ TTM <- mutate(TTM,tt_diff = travel_time_p50 - travel_time_p10)
 print(round(sum(is.na(TTM$tt_diff)) / length(TTM$tt_diff),1))
 ```
 
-For those with a 10th and 50th percentile travel time <= 30 min, the distribution of the difference between the two is as follows:
+For those with a 10th and 50th percentile travel time \<= 30 min, the distribution of the difference between the two is as follows:
+
 ```{r}
 TTM$tt_diff%>%na.omit()%>%summary()
 
 TTM<-TTM%>%select(-tt_diff)
 ```
 
-Let's get the travel time matrix ready for an export. We will restructure the data so that the geometry of the destination stops (`to_id`) is added to each row. We will also add the name of the origin station so that the data is easier to work with. This is a similar operation to a VLOOKUP in excel. We use the `from_id` and `to_id` fields as they represent the `parent_station`. 
-
+Let's get the travel time matrix ready for an export. We will restructure the data so that the geometry of the destination stops (`to_id`) is added to each row. We will also add the name of the origin station so that the data is easier to work with. This is a similar operation to a VLOOKUP in excel. We use the `from_id` and `to_id` fields as they represent the `parent_station`.
 
 For more guidance on `dplyr` functions (like `left_join()`) check out this [cheat sheet](https://nyu-cdsc.github.io/learningr/assets/data-transformation.pdf)
 
@@ -285,7 +267,7 @@ TTM <- st_as_sf(TTM)
 TTM
 ```
 
-This data format is easier to interpret if we look at a single stop. For example, lets find all stops that can be reached from Theresienstraße within a median travel time of <= 20 minutes.
+This data format is easier to interpret if we look at a single stop. For example, lets find all stops that can be reached from Theresienstraße within a median travel time of \<= 20 minutes.
 
 ```{r}
 ts_stops_20 <- filter(TTM,parent_station_name == "Theresienstraße", travel_time_p50 <= 20)
@@ -304,15 +286,13 @@ st_write(TTM,"./output/TTM.gpkg",append = F)
 
 st_write(stops, "./output/stops.gpkg", append = F)
 ```
+
 We can achieve the same result as above by doing the following:
 
 ![](./img/qgis_ttm.png)
-
 
 Then, by using what you've learned in previous tutorials, you can create service areas:
 
 ![](./img/service_area_example.png)
 
 We've just scratched the surface of what you can do with `r5r` and `tidytransit`. Consider taking a look through the documentation for some inspiration for your project!
-
-
