@@ -32,6 +32,8 @@ The tutorial consists of the following main steps:
 3.  Building a `r5r` model
 4.  Preparing origin-destination data
 5.  Calculating and exporting a TTM
+6.  Using the `isochrone()` function
+7.  Using the `accessibility()` function 
 
 In addition to r5r, you will be exposed to several other useful R packages: [dplyr](https://dplyr.tidyverse.org/) (for working with data tables), [sf](https://r-spatial.github.io/sf/) (for working with geodata), and [tidytransit](https://github.com/r-transit/tidytransit) (for working with GTFS data). These are all very powerful packages that can make your life a lot easier if you learn how to use them! You're encouraged to look into the documentation of these packages for more information.
 
@@ -136,11 +138,31 @@ tribble(~n_stops_raw, ~n_stops_filtered,
         nrow(gtfs_raw$stops), nrow(gtfs_filtered$stops))
 ```
 
--   Let's save the filtered feed. R5 will use this to build a network, you can also use it for other public transport analyses. Tip: `tidytransit` has a lot of great functionality for this!
+- There's (currently) an issue where the gtfs feed doesn't correctly represent large stops (ones using the [parent station](https://gtfs.org/documentation/schedule/reference/#stopstxt:~:text=or%20alight%20vehicles.-,parent_station,-Foreign%20ID%20referencing)). A quick fix for for this is to simply remove all values under `parent_station`
+- Note: the issue appears to be caused by the missing `location_type`
+- Let's take a look at the `stops.txt` table
+
+```{r}
+gtfs_filtered$stops
+```
+
+- to remove all values for `parent_station` we'll replace them with `NA`
+
+```{r}
+# first let's make a copy 
+
+gtfs_filtered_cleaned <- gtfs_filtered
+
+gtfs_filtered_cleaned$stops$parent_station <- NA
+
+gtfs_filtered_cleaned$stops
+```
+
+- Let's save the filtered (+cleaned) feed. R5 will use this to build a network, you can also use it for other public transport analyses. Tip: `tidytransit` has a lot of great functionality for this!
 
 ```{r}
 
-write_gtfs(gtfs_filtered,"./r5r_model/gtfs.zip")
+write_gtfs(gtfs_filtered_cleaned,"./r5r_model/gtfs.zip")
 
 ```
 
@@ -150,24 +172,37 @@ write_gtfs(gtfs_filtered,"./r5r_model/gtfs.zip")
 -   So far we have prepared the GTFS data, but we also need a street network.
 -   R5 uses an extract of OSM data to build the street network. To do this, it needs to be provided with a `.pbf` file. This can be found on [Geofabrik](http://download.geofabrik.de/) or <https://slice.openstreetmap.us/>.
 -   OSM by the slice is recommended because it has a cool name and because you can select the exact area you're interested in (reducing network size, improving performance)
--   Just as when we were trimming the GTFS feed, extract an area larger than the study area
+-   Just as when we were trimming the GTFS feed, we need an area larger than the study area
+- To do this, we'll get the coordinates of the bounding box for our buffered area
+- We can then paste these coordinates into OSM by the slice
+
+```{r}
+area_buffered_bbox <- st_bbox(area_buffered)
+
+print(paste(round(area_buffered_bbox,5),collapse = ", "))
+```
 
 ![](./img/slice.png)
 
--   Save the `.pbf` file to the `/r5r_model/` folder. The folder should look like this: ![](./img/r5r_folder.png)
+-   Save the `.pbf` file to the `/r5r_model/` folder. The folder should look like this: 
+![](./img/r5r_folder.png)
 
 -   We can now tell r5 to build the network.
 
--   Tip: if you are sure you aren't modifying the GTFS or `.pbf` data any further, you can turn `overwrite = F` to avoid rebuilding the model (faster)
+-   Tip: if you are sure you aren't modifying the GTFS or `.pbf` data any further, you can turn `overwrite = FALSE` to avoid rebuilding the model (faster)
 
 ```{r}
-r5r_core <- setup_r5(data_path = "./r5r_model", verbose = FALSE,overwrite = T)
+r5r_network <- build_network(
+  "./r5r_model",
+  verbose = FALSE,
+  temp_dir = FALSE,
+  elevation = "TOBLER",
+  overwrite = TRUE
+)
 ```
 
 # Preparing origin-destination data
-
 -   In this tutorial we'll use public transport stops as our origins and destinations.
--   As we've seen in a previous tutorial, we can get this information directly from the GTFS feed. Let's do it in R instead of QGIS this time
 -   As we discussed in lecture, a single "stop" may be represented by multiple in a GTFS feed (e.g., a bus stop on both sides of the street).
 -   We can take some steps to simplify this. We will group all stops that share the same value for `parent_station` and then keep a single coordinate by taking the average. Be aware that solving this in a line of code is often too good to be true. GTFS data often contains mistakes, and may require more careful cleaning!
 
@@ -211,13 +246,13 @@ Let's give it a shot:
 
 tip: there are many other settings you can change, you're encouraged to read the documentation of `r5r` to see what is possible! The [documentation](https://ipeagit.github.io/r5r/) has many nice examples!
 
--   `stops`: our origins are the public transport stops
+-   `origins`: our origins are the public transport stops
 -   `destinations`: our destinations are the public transport stops
 -   `mode`: the primary mode is public transport (which includes walking for access and transfers)
 -   `mode_egress`: the egress mode is walking
 -   `departure_datetime`: start time
 -   `time_window`: A travel time matrix will be calculated for each minute, for `time_window` minutes after the departure time. This allows for us to account for the variability in travel times. Imagine we ran our analysis only at 8:00 and we just missed a departure of an S-Bahn at 7:59, the travel time that we'd calculate would be severely penalized by an excessive wait time. Calculating travel times over a period of time lets us mitigate this. This parameter can be reduced (default is 10) as it can be computationally expensive. It's increasingly important in suburban and rural areas where service frequencies are low.
--   `percentiles`: this corresponds to the `time_window`. a value of 50 will report the median travel time. We can specify multiple percentiles by using a vector `c()`
+-   `percentiles`: this corresponds to the `time_window`. A value of 50 will return the median travel time. We can specify multiple percentiles by using a vector `c()`
 -   `max_walk_time`: max time for access, egress, and transfers by walking
 -   `walk_speed`: (kph)
 -   `max_ride`: maximum \# of transfers
@@ -226,13 +261,13 @@ tip: there are many other settings you can change, you're encouraged to read the
 
 TTM<-
 travel_time_matrix(
-  r5r_core,
+  r5r_network,
   origins = stops, 
   destinations = stops, 
   mode = c("TRANSIT"),  
   mode_egress = "WALK", 
-  departure_datetime = as.POSIXct("26-05-2025 9:00:00", format = "%d-%m-%Y %H:%M:%S"), #its important that the date and time is within your GTFS feed
-  time_window = 60L, # 
+  departure_datetime = as.POSIXct("03-06-2026 8:00:00", format = "%d-%m-%Y %H:%M:%S"), #its important that the date and time is within your GTFS feed
+  time_window = 60L,  
   percentiles = c(10,50),
   max_walk_time = 10,
   max_trip_duration = 30L,
@@ -320,8 +355,135 @@ We can achieve the same result as above by doing the following:
 
 ![](./img/qgis_ttm.png)
 
-Then, by using what you've learned in previous tutorials, you can create service areas:
+Then, by using what you've learned in previous tutorials, you can create service areas, which could look something like this:
 
 ![](./img/service_area_example.png)
 
-We've just scratched the surface of what you can do with `r5r` and `tidytransit`. Consider taking a look through the documentation for some inspiration for your project!
+# Using the `isochrone()` function
+
+As of `r5r version 2.4` there's an new implementation of the `isochrone()` function 
+
+  >  The `isochrone()` function has gone through major changes which substantially
+improved polygon-based isochrones. The function now builds on top of a travel
+time surface that uses a regular grid of points across the network (specifically
+a grid of Web Mercator pixels) and then uses the marching squares algorithm to
+generate the isochrone polygons. 
+
+you can read more here: <https://ipeagit.github.io/r5r/articles/isochrones.html>
+
+Let's try it out!
+
+```{r}
+ts_isochrones<-isochrone(
+  r5r_network,
+  origins = filter(stops,parent_station_name == "Theresienstraße"),
+  mode = "transit",
+  mode_egress = "walk",
+  cutoffs = c(10, 20, 30),
+  zoom = 10,
+  departure_datetime = as.POSIXct("03-06-2026 8:00:00", format = "%d-%m-%Y %H:%M:%S"),
+  polygon_output = TRUE,
+  time_window = 10L,
+  max_walk_time = 10,
+  max_trip_duration = 30,
+  walk_speed = 4,
+  max_rides = 3,
+  percentiles = c(10,50),
+  n_threads = Inf
+)
+
+ts_isochrones
+```
+```{r}
+ggplot()+
+  geom_sf(data = area)+
+  geom_sf(data = mutate(ts_isochrones,minutes = as.factor(isochrone)), aes(fill = minutes))+
+  geom_sf(data = filter(stops,parent_station_name == "Theresienstraße"), color = "blue")+
+  facet_wrap(~percentile)+
+  theme_minimal()+
+  theme(legend.position="bottom")
+```
+
+Similarly, we can export these isochrones to work with them in QGIS. 
+```{r}
+st_write(ts_isochrones,"./output/ts_isochrones.gpkg",append = F)
+
+```
+
+# Using the `accessibility()` function
+
+`accessibility()` is a very powerful function that allows various accessibility indicators to be calculated. We'll cover a basic example, where we count how many transport stops can be reached in 30 minutes.
+
+Since each stop represents one opportunity, lets add a column for this
+```{r}
+stops_accessibility <- mutate(stops, n_stops = 1)
+
+stops_accessibility
+```
+
+Now lets call `accessibility` while specifying the columns with opportunities using (`opportunities_colnames`). In our case there is only one (`"n_stops"`), but you could imagine how this may be helpful when analyzing accessibility to different types of amenities ;)
+
+We set `cutoffs` `30` to correspond to our travel time threshold and will use `decay_function = "step"`, which corresponds to a cumulative opportunities indicator.
+
+
+```{r}
+stops_accessibility_results <- accessibility(
+    r5r_network,
+  origins = stops_accessibility,
+  destinations = stops_accessibility,
+  opportunities_colnames = "n_stops",
+  mode = "TRANSIT",
+  mode_egress = "WALK",
+  departure_datetime = as.POSIXct("03-06-2026 8:00:00", format = "%d-%m-%Y %H:%M:%S"),
+  time_window = 60L,
+  percentiles = 10L,
+  decay_function = "step",
+  cutoffs = 30,
+  decay_value = NULL,
+  max_walk_time = 10,
+  walk_speed = 4,
+  max_rides = 3,
+  n_threads = Inf,
+)
+
+stops_accessibility_results
+```
+
+Similar to earlier, let's rejoin the geometry. This time, however, it'll correspond to the origin id.
+
+```{r}
+
+stops_accessibility_results <-
+  left_join(rename(geometry_to_join, id = "to_id"),
+            stops_accessibility_results,
+            by = "id"
+            )
+
+stops_accessibility_results
+```
+
+let's visualize it!
+
+```{r}
+ggplot()+
+  geom_sf(data = area)+
+  geom_sf(data = stops_accessibility_results, aes(color = accessibility))+
+  theme_minimal()+
+  theme(legend.position="bottom")
+```
+
+
+
+We've just scratched the surface of what you can do with `r5r`, let alone once you start combining it with other packages. Consider taking a look through the documentation for some inspiration for your project!
+
+**Hint: what could you calculate if you used the census grid as origins and destinations?**
+
+
+Want to know more about a function? Write `?` before the function name to pull up the docs.
+```{r}
+?accessibility
+```
+
+
+
+
