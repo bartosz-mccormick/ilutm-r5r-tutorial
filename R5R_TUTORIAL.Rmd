@@ -1,5 +1,7 @@
 ---
 title: "R5R Tutorial"
+author: "Bartosz McCormick (bartosz.mccormick@tum.de)"
+date: "2026-06-02"
 output: 
   html_notebook:
     toc: true
@@ -10,13 +12,18 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 ```
 
-```{r, include = FALSE}
-library(ggplot2)
-```
+# Before Starting
+
+If this is your first time using an (R) notebook, it lets you write notes alongside your code using markdown. To render the page it's recommended that you check "Preview on Save" and click "Preview". You can see it in the "Viewer" tab. This will make it easier to read the text.
+
+![](./img/preview_notebook.png){width="600px"}
+
 
 # Introduction
 
 In this tutorial you will be introduced to [r5r](https://ipeagit.github.io/r5r/): an interface to the [R5](https://github.com/conveyal/r5) routing engine developed by Conveyal. R5 allows you to do "rapid, realistic" routing on multimodal networks. It's very flexible, enabling intermodal analyses and has the key strength of retaining the full detail of the public transport timetable. If you're more familiar with python, you can consider using [r5py](https://github.com/r5py/r5py) instead - although it may not have all of the same functionality.
+
+This tutorial is for `r5r version 2.40`
 
 The tutorial consists of the following main steps:
 
@@ -44,13 +51,14 @@ install.packages("r5r")
 ```
 
 
-Since R5 (the routing engine itself) is written in java, we need to install the Java Development Kit (JDK) to get it to work. Specifically we need version **21**.Running this code, makes it straight forward:
+Since R5 (the routing engine itself) is written in java, we need to install the Java Development Kit (JDK) to get it to work. Specifically we need version **21**. Using the `rJavaEnv` package makes it straight forward:
 
-```{r, eval=FALSE}
+Note: you have to copy the code and paste it into your console for it to work correctly. When prompted, type in `yes` to download the JDK.
+
+```
 # note: you only need to run this once!
-
+install.packages("rJava")
 install.packages('rJavaEnv')
-install.packages('rJava')
 
 # check version of Java currently installed (if any) 
 rJavaEnv::java_check_version_rjava()
@@ -60,7 +68,6 @@ rJavaEnv::java_quick_install(version = 21)
 
 ```
 Alternatively, you can download it here: <https://adoptium.net/temurin/releases?version=21&os=any&arch=any>
-
 
 
 Once that's done, we can load all the packages we'll be using today.
@@ -75,16 +82,13 @@ library(r5r)
 
 ```
 
-For the code to run correctly, you need to set the "working directory". This should be the repository (folder) you downloaded / cloned from github.
 
-```{r}
-setwd("C:/you_need_to_update_this_path/ilutm-r5r-tutorial/")
-```
 
 # GTFS preparation
 
--   Download data from: <https://gtfs.de/> - pick "Deutschland gesamt"
--   Move the zip file into the `/raw_data/` folder
+-   Download data from: <https://gtfs.de/de/feeds/> - pick "Deutschland gesamt"
+-   Move the zip file into the `/raw_data/` folder (saved as `latest.zip`)
+- **Note: if you want to follow along without downloading anything, simply rename `/raw_data/latest_example.zip` to `/raw_data/latest.zip`**
 -   Using the full feed for all of Germany will require a lot of resources. Since we'll be analyzing a single city - lets filter the feed so that it is smaller. We'll be using `tidytransit` for this.
 -   Let's first load in geodata representing the area we'll be trimming to (in this case - Munich). We'll use `st_read()` from the `sf` package for this. It can handle all typical geospatial file types (`.shp`,`.gpkg`,etc.)
 
@@ -132,7 +136,7 @@ tribble(~n_stops_raw, ~n_stops_filtered,
         nrow(gtfs_raw$stops), nrow(gtfs_filtered$stops))
 ```
 
--   Let's save the filtered feed. R5 will use this to build a network, you can also use it for other public transport analyses (refer to previous tutorials). Tip: `tidytransit` has a lot of great functionality for this!
+-   Let's save the filtered feed. R5 will use this to build a network, you can also use it for other public transport analyses. Tip: `tidytransit` has a lot of great functionality for this!
 
 ```{r}
 
