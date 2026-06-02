@@ -35,8 +35,33 @@ In addition to r5r, you will be exposed to several other useful R packages: [dpl
 All the packages listed below (including `r5r`) can be installed by clicking "packages \> install" on the sidebar and searching for the package name or by executing the following command: `install.packages("package_name_here")`
 
 ![](./img/install_packages.png){width="300px"}
+```{r, eval=FALSE}
+# note: you only need to run this once!
+install.packages("tidyverse")
+install.packages("tidytransit")
+install.packages("sf")
+install.packages("r5r")
+```
 
-Since R5 (the routing engine itself) is written in java, we need to install the Java Development Kit (JDK) to get it to work. Specifically we need version **21**. You can install it here: <https://www.oracle.com/de/java/technologies/downloads/#java21>
+
+Since R5 (the routing engine itself) is written in java, we need to install the Java Development Kit (JDK) to get it to work. Specifically we need version **21**.Running this code, makes it straight forward:
+
+```{r, eval=FALSE}
+# note: you only need to run this once!
+
+install.packages('rJavaEnv')
+install.packages('rJava')
+
+# check version of Java currently installed (if any) 
+rJavaEnv::java_check_version_rjava()
+
+# install Java 21
+rJavaEnv::java_quick_install(version = 21)
+
+```
+Alternatively, you can download it here: <https://adoptium.net/temurin/releases?version=21&os=any&arch=any>
+
+
 
 Once that's done, we can load all the packages we'll be using today.
 
