@@ -1,7 +1,7 @@
 ---
 title: "R5R Tutorial"
 author: "Bartosz McCormick (bartosz.mccormick@tum.de)"
-date: "2026-06-02"
+date: "2026-06-03"
 output: 
   html_notebook:
     toc: true
@@ -46,10 +46,11 @@ All the packages listed below (including `r5r`) can be installed by clicking "pa
 ![](./img/install_packages.png){width="300px"}
 ```{r, eval=FALSE}
 # note: you only need to run this once!
-install.packages("tidyverse")
-install.packages("tidytransit")
-install.packages("sf")
-install.packages("r5r")
+
+#install.packages("tidyverse")
+#install.packages("tidytransit")
+#install.packages("sf")
+#install.packages("r5r")
 ```
 
 
@@ -57,16 +58,16 @@ Since R5 (the routing engine itself) is written in java, we need to install the 
 
 Note: you have to copy the code and paste it into your console for it to work correctly. When prompted, type in `yes` to download the JDK.
 
-```
+```{r}
 # note: you only need to run this once!
-install.packages("rJava")
-install.packages('rJavaEnv')
+#install.packages("rJava")
+#install.packages('rJavaEnv')
 
 # check version of Java currently installed (if any) 
-rJavaEnv::java_check_version_rjava()
+#rJavaEnv::java_check_version_rjava()
 
 # install Java 21
-rJavaEnv::java_quick_install(version = 21)
+#rJavaEnv::java_quick_install(version = 21)
 
 ```
 Alternatively, you can download it here: <https://adoptium.net/temurin/releases?version=21&os=any&arch=any>
@@ -89,7 +90,7 @@ library(r5r)
 # GTFS preparation
 
 -   Download data from: <https://gtfs.de/de/feeds/> - pick "Deutschland gesamt"
--   Move the zip file into the `/raw_data/` folder (saved as `latest.zip`)
+-   Move the zip file into the `/raw_data/` folder (saved as `latest.zip`) - **DON'T** unzip it!
 - **Note: if you want to follow along without downloading anything, simply rename `/raw_data/latest_example.zip` to `/raw_data/latest.zip`**
 -   Using the full feed for all of Germany will require a lot of resources. Since we'll be analyzing a single city - lets filter the feed so that it is smaller. We'll be using `tidytransit` for this.
 -   Let's first load in geodata representing the area we'll be trimming to (in this case - Munich). We'll use `st_read()` from the `sf` package for this. It can handle all typical geospatial file types (`.shp`,`.gpkg`,etc.)
@@ -104,15 +105,22 @@ ggplot()+
 
 -   It's good practice to buffer our study area to avoid any edge effects. Let's buffer our area by 5 km. NOTE: in this tutorial we're just going to be looking at accessibility within Munich. If your destinations extend beyond the border of your study area, you may need to buffer your study area significantly! (\>\>5 km)
 -   We've seen how to do this in QGIS, let's use `sf` this time
+- Before starting, we make sure our data is using a **projected** CRS that is appropriate for our study area. You can use <https://spatialreference.org/> to find an appropriate one. In our case, we'll use ETRS89 / UTM zone 32N (25832)
 
 ```{r}
-area_buffered <- st_transform(area,crs = 25832) # switch crs to projected (ETRS89 / UTM zone 32N)
+CRS_PROJECTED <- 25832
+BUFFER_DISTANCE <- 5000
+```
+
+
+```{r}
+area_buffered <- st_transform(area,crs = CRS_PROJECTED) # switch crs to projected 
 
 area_buffered <- st_union(area_buffered) # join geometries 
 
-area_buffered <- st_buffer(area_buffered, 5000) # buffer by 5km
+area_buffered <- st_buffer(area_buffered, BUFFER_DISTANCE) # buffer by 5km
 
-area_buffered <- st_transform(area_buffered,crs = 4326) #switch back to WGS84 for filtering the GTFS feed
+area_buffered <- st_transform(area_buffered,crs = 4326) # switch back to WGS84 for filtering the GTFS feed
 
 
 ggplot()+

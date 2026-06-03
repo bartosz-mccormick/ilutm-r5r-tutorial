@@ -28,9 +28,9 @@ to look into the documentation of these packages for more information.
 - Download or clone this repository
 - Open R Studio and create a new project. Select the folder that you downloaded/cloned (Project > New Project > Existing Directory > Create Project)
 
-![image](img/new_project_1.png){width="300px"}
-![image](img/new_project_2.png){width="300px"}
-![image](img/new_project_3.png){width="300px"}
+![image](img/new_project_1.png)
+![image](img/new_project_2.png)
+![image](img/new_project_3.png)
 
 
 - open the `.Rmd` file. You can then complete the tutorial by following the steps. 
